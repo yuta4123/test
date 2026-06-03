@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Star Catch Python</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js"></script>
+  </head>
+  <body>
+    <main class="app">
+      <section class="play">
+        <div class="topbar">
+          <h1>Star Catch Python</h1>
+          <div id="status">Python loading...</div>
+        </div>
+        <canvas id="game" width="900" height="540" aria-label="Star Catch Python game"></canvas>
+        <div class="hud">
+          <span>Move: ← → / A D</span>
+          <span>Restart: Space</span>
+        </div>
+      </section>
+    </main>
+    <script>
+      async function boot() {
+        const status = document.getElementById("status");
+        try {
+          const pyodide = await loadPyodide();
+          const code = await (await fetch("game.py")).text();
+          await pyodide.runPythonAsync(code);
+          status.textContent = "Ready";
+        } catch (error) {
+          status.textContent = "Load failed";
+          console.error(error);
+        }
+      }
+      boot();
+    </script>
+  </body>
+</html>
