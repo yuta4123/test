@@ -16,6 +16,8 @@ PLAYER_H = 22
 
 keys = set()
 last_time = 0
+touch_move = 0
+pointer_active = False
 
 game = {
     "player_x": WIDTH / 2 - PLAYER_W / 2,
@@ -119,9 +121,9 @@ def update(dt):
         return
 
     move = 0
-    if "ArrowLeft" in keys or "a" in keys:
+    if "ArrowLeft" in keys or "a" in keys or touch_move < 0:
         move -= 1
-    if "ArrowRight" in keys or "d" in keys:
+    if "ArrowRight" in keys or "d" in keys or touch_move > 0:
         move += 1
 
     game["player_x"] += move * 420 * dt
@@ -180,11 +182,85 @@ def on_keyup(event):
     keys.discard(event.key)
 
 
+def restart_if_needed(event=None):
+    if not game["running"]:
+        reset()
+    if event:
+        event.preventDefault()
+
+
+def place_player_from_pointer(event):
+    rect = canvas.getBoundingClientRect()
+    x = (event.clientX - rect.left) / rect.width * WIDTH
+    game["player_x"] = max(0, min(WIDTH - PLAYER_W, x - PLAYER_W / 2))
+    if not game["running"]:
+        reset()
+    event.preventDefault()
+
+
+def start_pointer_move(event):
+    global pointer_active
+    pointer_active = True
+    place_player_from_pointer(event)
+
+
+def move_player_to_pointer(event):
+    if pointer_active:
+        place_player_from_pointer(event)
+
+
+def stop_pointer_move(event):
+    global pointer_active
+    pointer_active = False
+    event.preventDefault()
+
+
+def set_touch_move(value):
+    def handler(event):
+        global touch_move
+        touch_move = value
+        if not game["running"]:
+            reset()
+        event.preventDefault()
+    return handler
+
+
+def clear_touch_move(event):
+    global touch_move
+    touch_move = 0
+    event.preventDefault()
+
+
 keydown_proxy = create_proxy(on_keydown)
 keyup_proxy = create_proxy(on_keyup)
 frame_proxy = create_proxy(frame)
+pointer_start_proxy = create_proxy(start_pointer_move)
+pointer_move_proxy = create_proxy(move_player_to_pointer)
+pointer_stop_proxy = create_proxy(stop_pointer_move)
+touch_left_start_proxy = create_proxy(set_touch_move(-1))
+touch_right_start_proxy = create_proxy(set_touch_move(1))
+touch_clear_proxy = create_proxy(clear_touch_move)
+restart_proxy = create_proxy(restart_if_needed)
 
 window.addEventListener("keydown", keydown_proxy)
 window.addEventListener("keyup", keyup_proxy)
+canvas.addEventListener("pointerdown", pointer_start_proxy)
+canvas.addEventListener("pointermove", pointer_move_proxy)
+canvas.addEventListener("pointerup", pointer_stop_proxy)
+canvas.addEventListener("pointercancel", pointer_stop_proxy)
+
+left_control = document.getElementById("left-control")
+right_control = document.getElementById("right-control")
+restart_control = document.getElementById("restart-control")
+
+left_control.addEventListener("pointerdown", touch_left_start_proxy)
+right_control.addEventListener("pointerdown", touch_right_start_proxy)
+left_control.addEventListener("pointerup", touch_clear_proxy)
+right_control.addEventListener("pointerup", touch_clear_proxy)
+left_control.addEventListener("pointerleave", touch_clear_proxy)
+right_control.addEventListener("pointerleave", touch_clear_proxy)
+left_control.addEventListener("pointercancel", touch_clear_proxy)
+right_control.addEventListener("pointercancel", touch_clear_proxy)
+restart_control.addEventListener("pointerdown", restart_proxy)
 status.textContent = "Ready"
 window.requestAnimationFrame(frame_proxy)
